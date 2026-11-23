@@ -1,4 +1,4 @@
-"""PokéLab Analytics · Solemne 3 · Martín Vásquez y Lizandro Delgado."""
+"""PokéLab Análisis · Solemne 3 · Martín Vásquez y Lizandro Delgado."""
 import html
 from datetime import date
 import pandas as pd
@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from data_utils import load,clean,filter_data,findings,STATS
 
-st.set_page_config(page_title="PokéLab | Analytics",page_icon="⚡",layout="wide",initial_sidebar_state="expanded")
+st.set_page_config(page_title="PokéLab | Análisis",page_icon="⚡",layout="wide",initial_sidebar_state="expanded")
 st.markdown("""<style>
 .stApp{background:radial-gradient(ellipse at 88% 0%,#26355b 0%,transparent 32%),linear-gradient(140deg,#0a1120,#10182a 65%,#111d32);color:#edf3ff}
 .block-container{max-width:1500px;padding-top:1.3rem}
@@ -27,7 +27,7 @@ st.markdown("""<style>
 .question{padding:12px 16px;border-left:4px solid #7bd9e9;background:#17273e;border-radius:0 12px 12px 0;margin:15px 0}
 </style>""",unsafe_allow_html=True)
 
-st.markdown('<div class="hero"><h1>⚡ PokéLab <span style="color:#99f2ff">Analytics</span></h1><p>Una Pokédex interactiva para investigar estadísticas, tipos y diferencias entre Pokémon · Martín Vásquez & Lizandro Delgado</p></div>',unsafe_allow_html=True)
+st.markdown('<div class="hero"><h1>⚡ PokéLab <span style="color:#99f2ff">Análisis</span></h1><p>Una Pokédex interactiva para investigar estadísticas, tipos y diferencias entre Pokémon · Martín Vásquez & Lizandro Delgado</p></div>',unsafe_allow_html=True)
 st.caption("Fuente: [PokéAPI](https://pokeapi.co/) · [Documentación oficial](https://pokeapi.co/docs/v2). Los indicadores corresponden a estadísticas base de los videojuegos, no al daño de combate.")
 
 @st.cache_data(ttl=86400,show_spinner=False)
@@ -36,7 +36,7 @@ def get_pokemon(count):
 
 with st.sidebar:
     st.header("🎛️ Laboratorio de datos")
-    n=st.selectbox("Tamaño de muestra: primeros IDs",[30,60,100,151,251,386],index=3,help="La selección de IDs no es una muestra aleatoria.")
+    n=st.selectbox("Tamaño de muestra: primeros identificadores",[30,60,100,151,251,386],index=3,help="Los identificadores no constituyen una muestra aleatoria.")
     if st.button("🔄 Actualizar PokéAPI",use_container_width=True):
         get_pokemon.clear()
         st.rerun()
@@ -83,7 +83,7 @@ with st.sidebar:
         help="Personaliza la fecha indicada en tu reporte. No filtra datos históricos inexistentes.")
     st.subheader("🎨 Personaliza el análisis")
     main_stat=st.selectbox("Estadística destacada",STATS,index=1)
-    top_n=st.slider("Cantidad de Pokémon para ranking",5,25,10)
+    top_n=st.slider("Cantidad de Pokémon en la clasificación",5,25,10)
     show_average=st.checkbox("Mostrar media de la estadística destacada",value=True)
 
 df=filter_data(raw,selected_types,search,atk,speed,dual,weight)
@@ -130,10 +130,10 @@ with tabs[1]:
         st.plotly_chart(px.bar(generation_counts,x="Año debut generación",y="Pokémon",color="Generación",
             title="Pokémon por año de debut de su generación",template="plotly_dark"),use_container_width=True)
         st.caption("Estos años son hitos de debut de generaciones en videojuegos, no fechas particulares de cada Pokémon.")
-        st.subheader(f"Ranking: top {top_n} por {main_stat.lower()}")
+        st.subheader(f"Clasificación: los {top_n} por {main_stat.lower()}")
         ranking=df.nlargest(top_n,main_stat)
         st.plotly_chart(px.bar(ranking,x=main_stat,y="Nombre",orientation="h",color=main_stat,
-            title=f"Top {top_n} Pokémon: {main_stat}",template="plotly_dark").update_layout(yaxis={"categoryorder":"total ascending"}),use_container_width=True)
+            title=f"Los {top_n} Pokémon con mayor {main_stat}",template="plotly_dark").update_layout(yaxis={"categoryorder":"total ascending"}),use_container_width=True)
         if show_average:st.metric(f"Promedio de {main_stat}",f"{df[main_stat].mean():.1f} puntos base")
         st.subheader("Hallazgos automáticos basados en tus filtros")
         for result in findings(df):st.write("• "+result)
@@ -184,14 +184,14 @@ with tabs[4]:
     st.download_button("⬇️ Exportar selección filtrada",df.to_csv(index=False).encode("utf-8-sig"),file_name="pokemon_filtrado.csv",mime="text/csv")
     quality=pd.DataFrame({"Columna":raw.columns,"Tipo":[str(raw[c].dtype) for c in raw.columns],"Faltantes":[int(raw[c].isna().sum()) for c in raw.columns]})
     st.dataframe(quality,hide_index=True,use_container_width=True)
-    st.metric("ID duplicados",int(raw["ID"].duplicated().sum()))
+    st.metric("Identificadores duplicados",int(raw["ID"].duplicated().sum()))
     with st.expander("¿Qué limpieza se hizo?"):
         st.write("Pandas convierte las estadísticas a números, comprueba valores ausentes, elimina IDs duplicados y calcula el total sumando las seis estadísticas base. Si una estadística está ausente, no se calcula un total engañoso.")
 
     st.subheader("📚 Diccionario de variables: nombre, tipo y significado")
     dictionary = {
         "ID": ("Entero", "Identificador numérico del Pokémon en PokéAPI", "PokéAPI"),
-        "Nombre": ("Texto", "Nombre de la especie de Pokémon", "PokéAPI"),
+        "Nombre": ("Texto", "Nombre de la especie Pokémon", "PokéAPI"),
         "Generación": ("Categoría numérica", "Generación a la que pertenece según su ID en la Pokédex Nacional", "Derivado del ID"),
         "Año debut generación": ("Año", "Año de lanzamiento inicial de los videojuegos de esa generación; no es fecha individual del Pokémon", "Tabla histórica de referencia"),
         "Tipo principal": ("Categoría", "Primer tipo registrado para el Pokémon", "PokéAPI"),
@@ -252,4 +252,4 @@ with tabs[5]:
         if personal.strip():st.info("Ahora demuéstralo en vivo cambiando el filtro de ataque mínimo.")
     st.feedback("thumbs")
 st.divider()
-st.caption("PokéLab Analytics · Solemne 3 · Martín Vásquez y Lizandro Delgado · Fuente: PokéAPI")
+st.caption("PokéLab Análisis · Solemne 3 · Martín Vásquez y Lizandro Delgado · Fuente: PokéAPI")
