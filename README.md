@@ -1,42 +1,50 @@
-# GameScope Analytics · Tercera Solemne de Programación II
+# PokéLab Analytics — Solemne 3
 
-**Integrantes:** Martín Vásquez · Lizandro Delgado
+**Integrantes:** Martín Vásquez y Lizandro Delgado.
 
-## Descripción
-Aplicación web de exploración y análisis del catálogo de videojuegos gratuitos de FreeToGame. La fuente entrega títulos, portadas, géneros, plataformas, desarrolladores, editores y fechas de lanzamiento. No se inventan ventas, usuarios activos ni valoraciones.
+Dashboard Streamlit para analizar estadísticas reales de Pokémon desde PokéAPI. Está organizado en seis pestañas: Pokédex, Análisis, Comparador, Relaciones, Datos y Defensa.
 
-**Fuente:** https://www.freetogame.com/  
-**Documentación:** https://www.freetogame.com/api-doc  
-**Consulta utilizada:** https://www.freetogame.com/api/games
+## Fuentes
+- API REST: https://pokeapi.co/api/v2/pokemon/
+- Documentación: https://pokeapi.co/docs/v2
 
-## Ejecución
-1. Instalar Python 3.10 o superior.
-2. `pip install -r requirements.txt`
-3. `streamlit run app.py`
-4. Abrir la dirección local que indique Streamlit.
+## Ejecutar
+1. Instalar Python 3.10+.
+2. Ejecutar `pip install -r requirements.txt`.
+3. Ejecutar `streamlit run app.py`.
+4. Elegir 30, 60, 100, 151 o 251 primeros Pokémon. La primera carga necesita acceso a la API, y luego se almacena en caché.
 
-La API se consulta mediante `requests.get()` y se convierte en un DataFrame con `pandas`. Si la API está caída, se puede subir un CSV previamente exportado desde la app. No se distribuye un respaldo ficticio.
+## Qué investiga la app
+- Tipo principal más frecuente (barras y gráfico circular).
+- Distribución del ataque base (histograma).
+- Comparaciones de hasta cuatro Pokémon (barras agrupadas).
+- Relación entre ataque y velocidad (dispersión/correlación).
+- Diferencias de estadísticas totales según tipo (cajas y tabla de promedios).
+- Cambios en indicadores después de aplicar filtros.
 
-## Preguntas de investigación
-1. ¿Qué géneros tienen más juegos?
-2. ¿Cómo se distribuyen por plataforma?
-3. ¿Cómo evolucionó el número de lanzamientos registrados por año?
-4. ¿Qué asociación descriptiva existe entre plataforma y género?
-5. ¿Qué desarrolladores tienen más títulos?
-6. ¿Cómo cambian estos resultados al aplicar filtros?
-
-## Componentes
-Usa selectbox, multiselect, text_input, slider, select_slider, radio, checkbox, toggle, button, file_uploader, number_input, download_button, metric, tabs, columns, expander, dataframe, plotly_chart, form, form_submit_button, text_area, feedback, entre otros. Los filtros modifican las filas analizadas y actualizan gráficos e indicadores.
-
-## Archivos
-- `app.py`: interfaz y gráficos
-- `games_data.py`: obtención, limpieza, filtros, análisis
-- `requirements.txt`: dependencias
-- `respaldo_pokedashboard/app.py`: copia del trabajo anterior
-- `respaldo_clase_autos/app.py`: copia del antiguo trabajo de autos
+## Requisitos de la rúbrica
+- API REST mediante requests.get, respuestas JSON y DataFrame de pandas.
+- Limpieza de duplicados, conversión numérica, revisión de faltantes y cálculos en funciones separadas.
+- Más de 16 instancias de Streamlit y más de 12 tipos de componentes: selectbox, multiselect, slider, checkbox, number_input, toggle, text_input, select_slider, button, metric, tabs, columns, dataframe, plotly_chart, download_button, expander, file_uploader, radio, text_area, form, form_submit_button, feedback, entre otros.
+- Seis tipos de gráfico: barras, histograma, circular, dispersión, cajas y barras comparativas; **cinco familias distintas** (barras comparativas comparten familia con barras).
+- Filtros funcionales que recalculan gráficos, indicadores y tabla.
+- Descarga CSV de los datos reales y selección filtrada.
 
 ## Limitaciones
-Los datos representan el catálogo registrado en FreeToGame en la fecha de consulta, no la totalidad de videojuegos. Fecha de lanzamiento puede faltar; gráficos temporales excluyen esos registros. Una mayor cantidad de títulos registrados no demuestra popularidad ni más jugadores.
+El análisis usa los primeros IDs de la API, no una muestra aleatoria de todas las especies. Los resultados describen estadísticas base de videojuegos, no daño en combate. La API pública puede no responder; es posible cargar una copia real previamente exportada como CSV, pero no se incluyen registros inventados. Al filtrar, grupos pequeños requieren precaución.
 
-## Presentación
-La defensa grupal dura 8–10 minutos. Mostrar una consulta, filtrar por género/plataforma y explicar el cambio en métricas y al menos tres tipos de gráficos. Los hallazgos deben obtenerse con el catálogo real cargado el día de la presentación.
+## Distribución sugerida de exposición (9 minutos)
+- Martín, 0:00–1:15: tema, preguntas, fuente.
+- Lizandro, 1:15–2:45: API, DataFrame, limpieza.
+- Martín, 2:45–5:20: filtros, KPIs, análisis visual.
+- Lizandro, 5:20–7:45: comparador, relaciones, resultados y limitaciones.
+- Ambos, 7:45–9:00: preguntas y conclusión.
+
+## Archivos
+- `app.py`: UI, filtros y gráficos.
+- `data_utils.py`: consultas REST, limpieza, filtrado y hallazgos.
+- `requirements.txt`: dependencias.
+- `respaldo_pokedashboard/app.py`: versión anterior de Pokémon.
+- `respaldo_clase_autos/app.py`: versión anterior del trabajo de autos.
+
+**Importante:** la entrega Blackboard exige ZIP con los nombres y apellidos, README.txt, informe PDF máximo tres páginas, presentación y enlace público. Preparar esos documentos conforme a la versión definitiva y comprobar el deploy antes de entregar.
