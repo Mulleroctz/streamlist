@@ -1,5 +1,6 @@
 """PokéLab Analytics · Solemne 3 · Martín Vásquez y Lizandro Delgado."""
 import html
+from datetime import date
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -35,7 +36,7 @@ def get_pokemon(count):
 
 with st.sidebar:
     st.header("🎛️ Laboratorio de datos")
-    n=st.selectbox("Tamaño de muestra: primeros IDs",[30,60,100,151,251],index=3,help="La selección de IDs no es una muestra aleatoria.")
+    n=st.selectbox("Tamaño de muestra: primeros IDs",[30,60,100,151,251,386],index=3,help="La selección de IDs no es una muestra aleatoria.")
     if st.button("🔄 Actualizar PokéAPI",use_container_width=True):
         get_pokemon.clear()
         st.rerun()
@@ -70,9 +71,25 @@ with st.sidebar:
     descending=st.toggle("Mayor a menor",value=False)
     cards_per_page=st.select_slider("Pokémon por página",options=[6,9,12,18],value=9)
     show_art=st.checkbox("Mostrar ilustraciones",value=True)
+    st.subheader("📅 Generaciones y fechas")
+    available_generations=sorted(raw["Generación"].dropna().astype(int).unique().tolist())
+    gen_selection=st.multiselect("Generaciones a incluir",available_generations,default=available_generations,
+        help="Filtra los Pokémon introducidos en las generaciones seleccionadas.")
+    available_years=sorted(raw["Año debut generación"].dropna().astype(int).unique().tolist())
+    debut_range=st.select_slider("Años de debut de generación",options=available_years,
+        value=(available_years[0],available_years[-1]),
+        help="Año en que debutaron los videojuegos de cada generación; NO es una fecha individual.")
+    report_date=st.date_input("Fecha del informe",value=date.today(),
+        help="Personaliza la fecha indicada en tu reporte. No filtra datos históricos inexistentes.")
+    st.subheader("🎨 Personaliza el análisis")
+    main_stat=st.selectbox("Estadística destacada",STATS,index=1)
+    top_n=st.slider("Cantidad de Pokémon para ranking",5,25,10)
+    show_average=st.checkbox("Mostrar media de la estadística destacada",value=True)
 
-df=filter_data(raw,selected_types,search,atk,speed,dual,weight).sort_values(sort,ascending=not descending,na_position="last")
-st.caption(f"Datos: {source} · {len(raw)} Pokémon cargados · {len(df)} visibles con tus filtros · IDs iniciales 1–{n}")
+df=filter_data(raw,selected_types,search,atk,speed,dual,weight)
+df=df[df["Generación"].isin(gen_selection) & df["Año debut generación"].between(*debut_range)]
+df=df.sort_values(sort,ascending=not descending,na_position="last")
+st.caption(f"Datos: {source} · {len(raw)} Pokémon cargados · {len(df)} visibles con tus filtros · Informe: {report_date.strftime('%d/%m/%Y')} · IDs 1–{n}")
 metrics=st.columns(5)
 values=[str(len(df)),f"{df['Ataque'].mean():.1f}" if len(df) else "—",f"{df['Defensa'].mean():.1f}" if len(df) else "—",f"{df['Velocidad'].mean():.1f}" if len(df) else "—",f"{df['Total'].mean():.1f}" if len(df) else "—"]
 for col,label,value in zip(metrics,["🎮 Pokémon","⚔️ Ataque medio","🛡️ Defensa media","💨 Velocidad media","⭐ Total medio"],values):col.metric(label,value)
@@ -108,6 +125,16 @@ with tabs[1]:
         st.plotly_chart(fig,use_container_width=True)
         st.markdown('<div class="question">Pregunta 3: ¿Cómo se reparten los tipos principales?</div>',unsafe_allow_html=True)
         st.plotly_chart(px.pie(counts,names="Tipo",values="Cantidad",hole=.52,title="Proporción de tipos principales",template="plotly_dark"),use_container_width=True)
+        st.markdown('<div class="question">Pregunta 4: ¿Cuántos Pokémon pertenecen a cada año de debut generacional?</div>',unsafe_allow_html=True)
+        generation_counts=df.groupby(["Generación","Año debut generación"],as_index=False).size().rename(columns={"size":"Pokémon"})
+        st.plotly_chart(px.bar(generation_counts,x="Año debut generación",y="Pokémon",color="Generación",
+            title="Pokémon por año de debut de su generación",template="plotly_dark"),use_container_width=True)
+        st.caption("Estos años son hitos de debut de generaciones en videojuegos, no fechas particulares de cada Pokémon.")
+        st.subheader(f"Ranking: top {top_n} por {main_stat.lower()}")
+        ranking=df.nlargest(top_n,main_stat)
+        st.plotly_chart(px.bar(ranking,x=main_stat,y="Nombre",orientation="h",color=main_stat,
+            title=f"Top {top_n} Pokémon: {main_stat}",template="plotly_dark").update_layout(yaxis={"categoryorder":"total ascending"}),use_container_width=True)
+        if show_average:st.metric(f"Promedio de {main_stat}",f"{df[main_stat].mean():.1f} puntos base")
         st.subheader("Hallazgos automáticos basados en tus filtros")
         for result in findings(df):st.write("• "+result)
 
@@ -150,7 +177,7 @@ with tabs[3]:
 
 with tabs[4]:
     st.subheader("Control de calidad, tabla y descarga")
-    options=["ID","Nombre","Tipo principal","Tipo secundario",*STATS,"Total","Altura (m)","Peso (kg)","Habilidades"]
+    options=["ID","Nombre","Generación","Año debut generación","Tipo principal","Tipo secundario",*STATS,"Total","Altura (m)","Peso (kg)","Habilidades"]
     visible=st.multiselect("Columnas visibles",options,default=["ID","Nombre","Tipos"] if "Tipos" in options else ["ID","Nombre","Tipo principal","Ataque","Defensa","Velocidad","Total"])
     if visible:st.dataframe(df[visible],hide_index=True,use_container_width=True)
     st.download_button("⬇️ Respaldo CSV real (todos los datos cargados)",raw.to_csv(index=False).encode("utf-8-sig"),file_name="pokemon_respaldo_real.csv",mime="text/csv")
