@@ -43,8 +43,6 @@ def clean(df):
         df[c]=pd.to_numeric(df[c],errors="coerce")
     for c,idx in [("Generación",0),("Año debut generación",1)]:
         if c not in df.columns:df[c]=df["ID"].apply(lambda v: generation_for_id(int(v))[idx] if pd.notna(v) else None)
-    for c in []:
-        df[c]=pd.to_numeric(df[c],errors="coerce")
     df=df.dropna(subset=["ID","Nombre","Tipo principal"])
     for c in ["Tipos","Tipo secundario","Imagen","Habilidades"]:
         df[c]=df[c].fillna("")
