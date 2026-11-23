@@ -6,6 +6,31 @@ import requests
 API = "https://pokeapi.co/api/v2/pokemon"
 NAMES = {"hp":"PS", "attack":"Ataque", "defense":"Defensa", "special-attack":"Ataque especial", "special-defense":"Defensa especial", "speed":"Velocidad"}
 STATS = list(NAMES.values())
+# Traducciones de los 18 tipos oficiales al español.
+TYPE_ES = {
+    "normal":"Normal", "fire":"Fuego", "water":"Agua", "electric":"Eléctrico",
+    "grass":"Planta", "ice":"Hielo", "fighting":"Lucha", "poison":"Veneno",
+    "ground":"Tierra", "flying":"Volador", "psychic":"Psíquico", "bug":"Bicho",
+    "rock":"Roca", "ghost":"Fantasma", "dragon":"Dragón", "dark":"Siniestro",
+    "steel":"Acero", "fairy":"Hada"
+}
+
+def localized_ability_names(abilities):
+    """Consulta los nombres oficiales españoles de las habilidades y guarda caché por ID."""
+    ids = sorted({int(a["ability"]["url"].rstrip("/").split("/")[-1])
+                  for item in abilities for a in item["abilities"]})
+    def one(identifier):
+        try:
+            response = requests.get(f"https://pokeapi.co/api/v2/ability/{identifier}/",timeout=12)
+            response.raise_for_status()
+            names = response.json().get("names",[])
+            spanish = next((n["name"] for n in names if n["language"]["name"]=="es"),None)
+            return identifier, spanish or "Sin traducción disponible"
+        except (requests.RequestException,ValueError,KeyError):
+            return identifier, "Traducción no disponible"
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        return dict(pool.map(one,ids))
+
 # Debut de videojuegos por generación, no fecha individual del Pokémon.
 GENERATIONS = [(151, 1, 1996), (251, 2, 1999), (386, 3, 2002),
                (493, 4, 2006), (649, 5, 2010), (721, 6, 2013),
@@ -19,7 +44,7 @@ def generation_for_id(pokemon_id):
 
 def parse_pokemon(p):
     tipos = sorted(p["types"], key=lambda v:v["slot"])
-    t = [v["type"]["name"].title() for v in tipos]
+    t = [TYPE_ES.get(v["type"]["name"],"Tipo no disponible") for v in tipos]
     d = {"ID":int(p["id"]), "Nombre":p["name"].replace("-"," ").title(),
          "Tipo principal":t[0] if t else "", "Tipo secundario":t[1] if len(t)>1 else "",
          "Tipos":", ".join(t), "Habilidades":", ".join(v["ability"]["name"] for v in p["abilities"]),
