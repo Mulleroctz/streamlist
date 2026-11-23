@@ -1,186 +1,187 @@
-"""GameScope Analytics | Proyecto académico Streamlit de Martín Vásquez y Lizandro Delgado."""
+"""PokéLab Analytics · Solemne 3 · Martín Vásquez y Lizandro Delgado."""
 import html
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
-from games_data import load_games,normalize,filter_games,insights
+from data_utils import load,clean,filter_data,findings,STATS
 
-st.set_page_config(page_title="GameScope | Analytics",page_icon="🎮",layout="wide",initial_sidebar_state="expanded")
+st.set_page_config(page_title="PokéLab | Analytics",page_icon="⚡",layout="wide",initial_sidebar_state="expanded")
 st.markdown("""<style>
-.stApp{background:linear-gradient(130deg,#0a1020,#0b1323 47%,#101827);color:#e9effe}
-.block-container{max-width:1440px;padding-top:1.25rem}
-h1,h2,h3{letter-spacing:-.025em}
-[data-testid="stMetric"]{background:#152139;border:1px solid #2c3954;border-radius:16px;padding:18px}
-[data-testid="stSidebar"]{background:#111b30}
-div[data-testid="stTabs"] button{font-size:1.03rem}
-.hero{padding:28px 34px;background:linear-gradient(110deg,#402b83,#203b8b 55%,#105c81);border:1px solid #475b99;border-radius:22px;margin-bottom:18px}
-.hero h1{font-size:2.4rem;color:white;margin:0}
-.hero p{color:#dbe6ff;margin-bottom:0}
-.game-card{background:#142038;border:1px solid #263750;border-radius:15px;overflow:hidden;margin-bottom:12px;min-height:350px}
-.game-card img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
-.game-body{padding:13px}
-.game-title{font-weight:800;font-size:1.04rem;color:#f0f4ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.game-meta{font-size:.82rem;color:#98b5df;margin-top:5px}
-.game-desc{font-size:.8rem;color:#c9d5e8;line-height:1.35;height:48px;overflow:hidden;margin:10px 0}
-.game-btn{color:#8cd7ff!important;text-decoration:none;font-weight:700}
-.small-note{color:#b0bdd7}
+.stApp{background:radial-gradient(ellipse at 88% 0%,#26355b 0%,transparent 32%),linear-gradient(140deg,#0a1120,#10182a 65%,#111d32);color:#edf3ff}
+.block-container{max-width:1500px;padding-top:1.3rem}
+[data-testid="stSidebar"]{background:#101a2e}
+[data-testid="stMetric"]{background:linear-gradient(135deg,#1d2a46,#17243b);border:1px solid #34496d;border-radius:18px;padding:17px}
+[data-testid="stTabs"] button{font-size:1rem}
+.hero{padding:28px 34px;border-radius:24px;background:linear-gradient(115deg,#5b3678,#263e81 55%,#106378);border:1px solid #6574ab;margin-bottom:18px}
+.hero h1{color:#fff;font-size:2.65rem;letter-spacing:-.055em;margin:0}
+.hero p{color:#dceaff;font-size:1rem;margin:8px 0 0}
+.pokemon-card{background:#18243b;border:1px solid #324867;border-radius:20px;overflow:hidden;margin-bottom:14px;min-height:330px}
+.pokemon-card img{display:block;height:185px;width:100%;object-fit:contain;background:radial-gradient(circle,#32456f 0%,#18243b 68%)}
+.pokemon-body{padding:15px}
+.pokemon-id{font-size:.72rem;letter-spacing:.07em;color:#a2c0e9}
+.pokemon-name{font-size:1.22rem;font-weight:800;color:#f4f7ff}
+.pokemon-type{display:inline-block;padding:4px 10px;margin-top:8px;background:#294563;border:1px solid #426b91;border-radius:16px;color:#cde9ff;font-size:.78rem}
+.pokemon-stats{margin-top:11px;font-size:.85rem;color:#c5d5f0}
+.question{padding:12px 16px;border-left:4px solid #7bd9e9;background:#17273e;border-radius:0 12px 12px 0;margin:15px 0}
 </style>""",unsafe_allow_html=True)
 
-st.markdown('<div class="hero"><h1>🎮 GameScope <span style="color:#a5ecff">Analytics</span></h1><p>Explora y analiza videojuegos gratuitos con datos reales · Martín Vásquez & Lizandro Delgado</p></div>',unsafe_allow_html=True)
-st.caption("Fuente obligatoria: [FreeToGame.com](https://www.freetogame.com/) · [Documentación API](https://www.freetogame.com/api-doc). Los datos representan el catálogo disponible, no todas las ventas, descargas ni jugadores del mundo.")
+st.markdown('<div class="hero"><h1>⚡ PokéLab <span style="color:#99f2ff">Analytics</span></h1><p>Una Pokédex interactiva para investigar estadísticas, tipos y diferencias entre Pokémon · Martín Vásquez & Lizandro Delgado</p></div>',unsafe_allow_html=True)
+st.caption("Fuente: [PokéAPI](https://pokeapi.co/) · [Documentación oficial](https://pokeapi.co/docs/v2). Los indicadores corresponden a estadísticas base de los videojuegos, no al daño de combate.")
 
-@st.cache_data(ttl=21600,show_spinner=False)
-def get_games():
-    return load_games()
+@st.cache_data(ttl=86400,show_spinner=False)
+def get_pokemon(count):
+    return load(count)
 
 with st.sidebar:
-    st.title("🎛️ Centro de control")
-    st.markdown("Explora el catálogo con filtros que cambian todos los resultados.")
-    if st.button("↻ Actualizar desde la API",use_container_width=True):
-        get_games.clear()
+    st.header("🎛️ Laboratorio de datos")
+    n=st.selectbox("Tamaño de muestra: primeros IDs",[30,60,100,151,251],index=3,help="La selección de IDs no es una muestra aleatoria.")
+    if st.button("🔄 Actualizar PokéAPI",use_container_width=True):
+        get_pokemon.clear()
         st.rerun()
-
 try:
-    with st.spinner("Cargando catálogo real de videojuegos…"):
-        raw=get_games()
-    source="API FreeToGame"
-except Exception as ex:
-    st.warning(f"Sin conexión con FreeToGame: {ex}")
-    st.info("Sube un CSV real exportado previamente desde la pestaña Datos para continuar; no se crean juegos ficticios.")
-    upload=st.file_uploader("CSV real de respaldo",type="csv")
-    if upload is None:st.stop()
-    raw=normalize(pd.read_csv(upload).to_dict("records"))
-    source="CSV real de respaldo"
-if raw.empty:st.error("La fuente no entregó juegos utilizables.");st.stop()
+    with st.spinner("Obteniendo datos oficiales de PokéAPI…"):
+        raw,failed=get_pokemon(n)
+    source="PokéAPI"
+except Exception as exc:
+    st.error(f"PokéAPI no respondió: {exc}")
+    st.info("Para trabajar sin internet, carga un CSV real previamente exportado desde esta aplicación. No se inventan registros.")
+    uploaded=st.file_uploader("CSV real de respaldo",type="csv")
+    if uploaded is None:st.stop()
+    try:raw=clean(pd.read_csv(uploaded))
+    except Exception as exc:st.error(f"CSV inválido: {exc}");st.stop()
+    source="CSV de respaldo"
+    failed=[]
 
-genres=sorted(raw["genre"].unique())
-platforms=sorted(raw["platform"].unique())
-publishers=sorted(raw["publisher"].unique())
-developers=sorted(raw["developer"].unique())
-years=raw["year"].dropna()
-low=int(years.min()) if not years.empty else 2000
-high=int(years.max()) if not years.empty else 2026
+if raw.empty:st.warning("La fuente no contiene registros útiles.");st.stop()
+if failed:st.warning(f"Consulta parcial: {len(failed)} IDs no respondieron. Los gráficos utilizan exclusivamente los {len(raw)} registros recibidos.")
 
+all_types=sorted(set(raw["Tipo principal"]) | (set(raw["Tipo secundario"])-{""}))
+max_weight=max(1,int(raw["Peso (kg)"].max())+1)
 with st.sidebar:
-    query=st.text_input("Buscar por título",placeholder="Ej.: Fortnite")
-    genre=st.multiselect("Géneros",genres)
-    platform=st.multiselect("Plataformas",platforms)
-    year_filter=st.slider("Años de lanzamiento",min_value=low,max_value=high,value=(low,high))
-    pub=st.multiselect("Editor / publisher",publishers)
-    dev=st.multiselect("Desarrollador",developers)
-    sort=st.selectbox("Ordenar catálogo",["Título A–Z","Más recientes","Más antiguos","Género"])
-    limit=st.select_slider("Tarjetas por página",options=[6,9,12,18],value=9)
-    show_desc=st.checkbox("Mostrar descripción de juegos",value=True)
-    show_images=st.toggle("Mostrar portadas",value=True)
+    st.subheader("🔎 Filtros que modifican resultados")
+    selected_types=st.multiselect("Tipos Pokémon",all_types)
+    search=st.text_input("Buscar por nombre",placeholder="Ej.: pikachu")
+    atk=st.slider("Ataque mínimo",0,200,0,5)
+    speed=st.slider("Velocidad mínima",0,200,0,5)
+    dual=st.checkbox("Solo Pokémon de doble tipo")
+    weight=st.number_input("Peso máximo en kg",min_value=1,max_value=max_weight,value=max_weight)
+    sort=st.selectbox("Ordenar catálogo",["ID","Total","Ataque","Velocidad","Defensa"],index=0)
+    descending=st.toggle("Mayor a menor",value=False)
+    cards_per_page=st.select_slider("Pokémon por página",options=[6,9,12,18],value=9)
+    show_art=st.checkbox("Mostrar ilustraciones",value=True)
 
-data=filter_games(raw,genre,platform,query,year_filter,pub,dev)
-if sort=="Más recientes":data=data.sort_values("release_date",ascending=False,na_position="last")
-elif sort=="Más antiguos":data=data.sort_values("release_date",na_position="last")
-elif sort=="Género":data=data.sort_values(["genre","title"])
-else:data=data.sort_values("title")
+df=filter_data(raw,selected_types,search,atk,speed,dual,weight).sort_values(sort,ascending=not descending,na_position="last")
+st.caption(f"Datos: {source} · {len(raw)} Pokémon cargados · {len(df)} visibles con tus filtros · IDs iniciales 1–{n}")
+metrics=st.columns(5)
+values=[str(len(df)),f"{df['Ataque'].mean():.1f}" if len(df) else "—",f"{df['Defensa'].mean():.1f}" if len(df) else "—",f"{df['Velocidad'].mean():.1f}" if len(df) else "—",f"{df['Total'].mean():.1f}" if len(df) else "—"]
+for col,label,value in zip(metrics,["🎮 Pokémon","⚔️ Ataque medio","🛡️ Defensa media","💨 Velocidad media","⭐ Total medio"],values):col.metric(label,value)
+tabs=st.tabs(["🏠 Pokédex","📊 Análisis","⚔️ Comparador","🔬 Relaciones","🗂️ Datos","🎓 Defensa"])
 
-st.caption(f"✅ Origen: {source} · {len(raw):,} juegos recibidos · {len(data):,} cumplen los filtros")
-kpis=st.columns(5)
-dated=data.dropna(subset=["year"])
-values=[len(data),data["genre"].nunique(),data["platform"].nunique(),data["developer"].nunique(),int(dated["year"].max()) if len(dated) else "—"]
-for c,l,v in zip(kpis,["🎮 Juegos","🧩 Géneros","💻 Plataformas","🏢 Desarrolladores","🗓️ Último año"],values):
-    c.metric(l,str(v))
-
-t_catalog,t_trends,t_compare,t_data,t_defense=st.tabs(["🎮 Catálogo","📊 Analítica","🧠 Comparador","🗂️ Datos y calidad","🎓 Laboratorio de defensa"])
-
-with t_catalog:
-    st.subheader("Descubre los juegos")
-    if data.empty:st.warning("No hay coincidencias. Cambia los filtros de la izquierda.")
+with tabs[0]:
+    st.subheader("Pokédex visual · explora los registros")
+    st.markdown('<div class="question">¿Qué Pokémon quedan cuando combinas varios filtros?</div>',unsafe_allow_html=True)
+    if df.empty:st.warning("No hay Pokémon con estos criterios. Modifica los filtros.")
     else:
-        pages=max(1,(len(data)+limit-1)//limit)
-        page=st.number_input("Página",min_value=1,max_value=pages,value=1)
-        cards=data.iloc[(page-1)*limit:page*limit]
-        for start in range(0,len(cards),3):
+        total_pages=max(1,(len(df)+cards_per_page-1)//cards_per_page)
+        page=st.number_input("Página del catálogo",min_value=1,max_value=total_pages,value=1)
+        selection=df.iloc[(page-1)*cards_per_page:page*cards_per_page]
+        for offset in range(0,len(selection),3):
             columns=st.columns(3)
-            for c,(_,game) in zip(columns,cards.iloc[start:start+3].iterrows()):
-                title=html.escape(str(game["title"]))
-                meta=html.escape(f'{game["genre"]} · {game["platform"]}')
-                desc=html.escape(str(game["short_description"])[:115])
-                url=str(game["freetogame_profile_url"])
-                img=str(game["thumbnail"])
+            for c,(_,p) in zip(columns,selection.iloc[offset:offset+3].iterrows()):
+                image_url=str(p["Imagen"])
+                art=f'<img loading="lazy" src="{html.escape(image_url,quote=True)}" alt="{html.escape(str(p["Nombre"]))}">' if show_art and image_url.startswith("https://") else ""
                 with c:
-                    picture=f'<img loading="lazy" src="{html.escape(img,quote=True)}" alt="{title}">' if show_images and img.startswith("https://") else ""
-                    description=f'<div class="game-desc">{desc}</div>' if show_desc else ""
-                    profile=f'<a class="game-btn" href="{html.escape(url,quote=True)}" target="_blank" rel="noopener">Ver ficha ↗</a>' if url.startswith("https://www.freetogame.com/") else ""
-                    st.markdown(f'<div class="game-card">{picture}<div class="game-body"><div class="game-title">{title}</div><div class="game-meta">{meta}</div>{description}{profile}</div></div>',unsafe_allow_html=True)
-        st.info("Pregunta de investigación: ¿qué géneros y plataformas predominan en el catálogo después de aplicar filtros?")
+                    st.markdown(f'<div class="pokemon-card">{art}<div class="pokemon-body"><div class="pokemon-id">N.º {int(p["ID"]):03d}</div><div class="pokemon-name">{html.escape(str(p["Nombre"]))}</div><span class="pokemon-type">{html.escape(str(p["Tipos"]))}</span><div class="pokemon-stats">⚔️ Ataque {p["Ataque"]:.0f} &nbsp; 🛡️ Defensa {p["Defensa"]:.0f}<br>💨 Velocidad {p["Velocidad"]:.0f} &nbsp; ⭐ Total {p["Total"]:.0f}</div></div></div>',unsafe_allow_html=True)
 
-with t_trends:
-    if data.empty:st.warning("Sin juegos para analizar.")
+with tabs[1]:
+    st.subheader("Análisis descriptivo · preguntas que responden los gráficos")
+    if df.empty:st.info("Selecciona al menos un Pokémon.")
     else:
-        st.subheader("1 · ¿Qué géneros están más representados?")
-        top=st.slider("Número de géneros",5,min(25,max(5,data["genre"].nunique())),min(10,max(5,data["genre"].nunique())))
-        g=data["genre"].value_counts().head(top).rename_axis("Género").reset_index(name="Juegos")
-        st.plotly_chart(px.bar(g,x="Juegos",y="Género",orientation="h",color="Juegos",color_continuous_scale="Tealgrn",title="Cantidad de juegos por género").update_layout(yaxis={"categoryorder":"total ascending"}),use_container_width=True)
-        st.subheader("2 · ¿Cómo se reparte el catálogo por plataforma?")
-        p=data["platform"].value_counts().rename_axis("Plataforma").reset_index(name="Juegos")
-        st.plotly_chart(px.pie(p,names="Plataforma",values="Juegos",hole=.56,title="Distribución por plataforma"),use_container_width=True)
-        st.subheader("3 · ¿Cómo cambiaron los lanzamientos a lo largo del tiempo?")
-        time=data.dropna(subset=["year"]).groupby("year",as_index=False).size().rename(columns={"size":"Juegos"})
-        if not time.empty:
-            time["Año"]=time["year"].astype(int)
-            st.plotly_chart(px.line(time,x="Año",y="Juegos",markers=True,title="Lanzamientos registrados por año"),use_container_width=True)
-        st.subheader("4 · ¿Qué plataformas se relacionan con cada género?")
-        cross=pd.crosstab(data["genre"],data["platform"])
-        st.plotly_chart(px.imshow(cross,labels={"x":"Plataforma","y":"Género","color":"Juegos"},aspect="auto",title="Género × plataforma"),use_container_width=True)
-        st.subheader("Hallazgos calculados")
-        for finding in insights(data):st.write("• "+finding)
-        st.caption("Las cifras describen registros del catálogo; no representan popularidad, usuarios o ventas.")
+        st.markdown('<div class="question">Pregunta 1: ¿Qué tipo principal predomina entre los Pokémon filtrados?</div>',unsafe_allow_html=True)
+        counts=df["Tipo principal"].value_counts().rename_axis("Tipo").reset_index(name="Cantidad")
+        st.plotly_chart(px.bar(counts,x="Tipo",y="Cantidad",color="Tipo",title="Frecuencia por tipo principal",labels={"Cantidad":"Cantidad de Pokémon"},template="plotly_dark"),use_container_width=True)
+        st.markdown('<div class="question">Pregunta 2: ¿Cómo se distribuye el ataque en esta muestra?</div>',unsafe_allow_html=True)
+        nbins=st.slider("Intervalos del histograma",5,30,12)
+        fig=px.histogram(df,x="Ataque",nbins=nbins,title="Distribución de ataque base",template="plotly_dark")
+        fig.update_layout(xaxis_title="Ataque (puntos base)",yaxis_title="Número de Pokémon")
+        st.plotly_chart(fig,use_container_width=True)
+        st.markdown('<div class="question">Pregunta 3: ¿Cómo se reparten los tipos principales?</div>',unsafe_allow_html=True)
+        st.plotly_chart(px.pie(counts,names="Tipo",values="Cantidad",hole=.52,title="Proporción de tipos principales",template="plotly_dark"),use_container_width=True)
+        st.subheader("Hallazgos automáticos basados en tus filtros")
+        for result in findings(df):st.write("• "+result)
 
-with t_compare:
-    st.subheader("Comparador interactivo de géneros")
-    if data.empty:st.info("Selecciona filtros menos restrictivos.")
+with tabs[2]:
+    st.subheader("Comparación entre 2 y 4 Pokémon")
+    choices=st.multiselect("Pokémon para comparar",df["Nombre"].tolist(),default=df["Nombre"].tolist()[:2],max_selections=4)
+    winner_stat=st.selectbox("Estadística que define al ganador",STATS)
+    if len(choices)<2:st.info("Elige al menos dos Pokémon.")
     else:
-        selected=st.multiselect("Selecciona hasta 4 géneros para comparar",genres,default=list(data["genre"].value_counts().head(2).index),max_selections=4)
-        measure=st.radio("¿Qué deseas comparar?",["Número de juegos","Desarrolladores distintos","Editores distintos"],horizontal=True)
-        if selected:
-            grouped=data[data["genre"].isin(selected)].groupby("genre").agg(Juegos=("id","count"),Desarrolladores=("developer","nunique"),Editores=("publisher","nunique")).reset_index()
-            key={"Número de juegos":"Juegos","Desarrolladores distintos":"Desarrolladores","Editores distintos":"Editores"}[measure]
-            st.plotly_chart(px.bar(grouped,x="genre",y=key,color="genre",title=f"{measure} por género"),use_container_width=True)
-            st.dataframe(grouped,hide_index=True,use_container_width=True)
-        st.subheader("5 · ¿Qué desarrolladores tienen más títulos?")
-        n=st.slider("Top de desarrolladores",3,20,10)
-        devcounts=data["developer"].value_counts().head(n).rename_axis("Desarrollador").reset_index(name="Juegos")
-        st.plotly_chart(px.bar(devcounts,y="Desarrollador",x="Juegos",orientation="h",title="Desarrolladores con más juegos").update_layout(yaxis={"categoryorder":"total ascending"}),use_container_width=True)
+        chosen=df[df["Nombre"].isin(choices)]
+        melted=chosen.melt(id_vars="Nombre",value_vars=STATS,var_name="Estadística",value_name="Puntos")
+        st.plotly_chart(px.bar(melted,x="Estadística",y="Puntos",color="Nombre",barmode="group",title="Comparación de seis estadísticas base",template="plotly_dark"),use_container_width=True)
+        best=chosen.nlargest(1,winner_stat).iloc[0]
+        st.success(f"Mayor {winner_stat.lower()}: {best['Nombre']} ({best[winner_stat]:.0f} puntos).")
+        for column,(_,p) in zip(st.columns(len(chosen)),chosen.iterrows()):
+            with column:
+                if show_art and str(p["Imagen"]).startswith("https://"):st.image(p["Imagen"],width=140)
+                st.write(f"**{p['Nombre']}** · {p['Tipos']}")
+        st.dataframe(chosen[["Nombre","Tipos",*STATS,"Total"]],hide_index=True,use_container_width=True)
 
-with t_data:
-    st.subheader("Tabla interactiva y calidad del DataFrame")
-    visible=["title","genre","platform","publisher","developer","release_date","year","short_description"]
-    chosen=st.multiselect("Columnas de la tabla",visible,default=visible[:6])
-    if chosen:st.dataframe(data[chosen],use_container_width=True,hide_index=True)
-    st.download_button("⬇️ Descargar catálogo real en CSV",raw.to_csv(index=False).encode("utf-8-sig"),file_name="freetogame_catalogo_real.csv",mime="text/csv")
-    st.download_button("⬇️ Descargar selección filtrada",data.to_csv(index=False).encode("utf-8-sig"),file_name="gamescope_filtrado.csv",mime="text/csv")
-    quality=pd.DataFrame({"Variable":raw.columns,"Tipo de dato":[str(raw[c].dtype) for c in raw.columns],"Faltantes":[int(raw[c].isna().sum()) for c in raw.columns]})
-    st.dataframe(quality,use_container_width=True,hide_index=True)
-    st.metric("IDs duplicados tras limpieza",int(raw["id"].duplicated().sum()))
-    with st.expander("Explicación de la preparación de datos"):
-        st.markdown("Se utiliza **requests.get** para solicitar JSON. Después **pandas.DataFrame** organiza las filas; **drop_duplicates** elimina IDs repetidos; **to_datetime** convierte fechas; **groupby** y **value_counts** calculan las estadísticas. La función **filter_games** conecta los controles con todos los resultados.")
+with tabs[3]:
+    st.subheader("Relaciones y variabilidad")
+    if df.empty:st.info("Selecciona filtros menos restrictivos.")
+    else:
+        st.markdown('<div class="question">Pregunta 4: ¿El ataque y la velocidad se relacionan?</div>',unsafe_allow_html=True)
+        a,b=st.columns(2)
+        with a:x=st.selectbox("Variable horizontal",STATS,index=1)
+        with b:y=st.selectbox("Variable vertical",STATS,index=5)
+        st.plotly_chart(px.scatter(df,x=x,y=y,color="Tipo principal",hover_name="Nombre",size="Total",size_max=19,title=f"Relación descriptiva: {x} y {y}",template="plotly_dark"),use_container_width=True)
+        if len(df)>2 and x!=y:
+            corr=df[[x,y]].corr().iloc[0,1]
+            if pd.notna(corr):st.metric("Correlación de Pearson",f"{corr:.2f}")
+        st.caption("La correlación indica asociación lineal; no demuestra que una estadística provoque la otra.")
+        st.markdown('<div class="question">Pregunta 5: ¿Qué tipos presentan más diferencias en el total de estadísticas?</div>',unsafe_allow_html=True)
+        st.plotly_chart(px.box(df,x="Tipo principal",y="Total",points="outliers",title="Distribución del total por tipo principal",template="plotly_dark"),use_container_width=True)
+        st.markdown('<div class="question">Pregunta 6: ¿Cómo varía el ataque promedio entre tipos?</div>',unsafe_allow_html=True)
+        grouped=df.groupby("Tipo principal",as_index=False).agg(Cantidad=("ID","count"),Ataque_promedio=("Ataque","mean"),Velocidad_promedio=("Velocidad","mean")).round(1)
+        st.dataframe(grouped.sort_values("Ataque_promedio",ascending=False),hide_index=True,use_container_width=True)
+        st.caption("Los grupos pequeños se interpretan con cautela: el promedio puede variar mucho.")
 
-with t_defense:
-    st.subheader("🎓 Entrenamiento para la defensa oral")
-    st.write("Aprende una operación por vez: **API → DataFrame → limpieza → filtros → indicadores → gráficos**.")
-    question=st.selectbox("Pregunta de la profesora",["¿De dónde salen los datos?","¿Para qué sirve DataFrame?","¿Qué hace un filtro?","¿Por qué usamos barras?","¿Para qué sirve el gráfico de línea?","¿Por qué no contamos jugadores?"])
+with tabs[4]:
+    st.subheader("Control de calidad, tabla y descarga")
+    options=["ID","Nombre","Tipo principal","Tipo secundario",*STATS,"Total","Altura (m)","Peso (kg)","Habilidades"]
+    visible=st.multiselect("Columnas visibles",options,default=["ID","Nombre","Tipos"] if "Tipos" in options else ["ID","Nombre","Tipo principal","Ataque","Defensa","Velocidad","Total"])
+    if visible:st.dataframe(df[visible],hide_index=True,use_container_width=True)
+    st.download_button("⬇️ Respaldo CSV real (todos los datos cargados)",raw.to_csv(index=False).encode("utf-8-sig"),file_name="pokemon_respaldo_real.csv",mime="text/csv")
+    st.download_button("⬇️ Exportar selección filtrada",df.to_csv(index=False).encode("utf-8-sig"),file_name="pokemon_filtrado.csv",mime="text/csv")
+    quality=pd.DataFrame({"Columna":raw.columns,"Tipo":[str(raw[c].dtype) for c in raw.columns],"Faltantes":[int(raw[c].isna().sum()) for c in raw.columns]})
+    st.dataframe(quality,hide_index=True,use_container_width=True)
+    st.metric("ID duplicados",int(raw["ID"].duplicated().sum()))
+    with st.expander("¿Qué limpieza se hizo?"):
+        st.write("Pandas convierte las estadísticas a números, comprueba valores ausentes, elimina IDs duplicados y calcula el total sumando las seis estadísticas base. Si una estadística está ausente, no se calcula un total engañoso.")
+
+with tabs[5]:
+    st.subheader("Entrenamiento para la presentación y defensa")
+    st.markdown("**Ruta fácil de recordar:** API → DataFrame → limpiar → filtrar → calcular → visualizar.")
+    q=st.selectbox("Pregunta que podría hacer la profesora",["¿De dónde vienen los datos?","¿Qué es un DataFrame?","¿Cómo funciona el filtro de tipo?","¿Para qué sirve groupby?","¿Por qué un histograma?","¿Qué muestra la dispersión?","¿Por qué no se inventan datos?"])
     answers={
-        "¿De dónde salen los datos?":"De FreeToGame. requests.get descarga JSON y pandas lo organiza en un DataFrame.",
-        "¿Para qué sirve DataFrame?":"Permite almacenar registros en filas y variables en columnas y analizarlos con pandas.",
-        "¿Qué hace un filtro?":"Crea un subconjunto de filas que cumplen condiciones. Los gráficos y métricas se recalculan.",
-        "¿Por qué usamos barras?":"Para comparar cantidades de juegos entre géneros o desarrolladores.",
-        "¿Para qué sirve el gráfico de línea?":"Para observar cómo varía el número de lanzamientos por año.",
-        "¿Por qué no contamos jugadores?":"La API no incluye usuarios activos ni descargas; inventarlos sería incorrecto."}
-    if st.checkbox("Mostrar respuesta breve"):st.success(answers[question])
-    with st.form("practice"):
-        choice=st.radio("¿Qué función agrupa registros por género?",["requests.get()","groupby()","st.title()"],index=None)
-        explanation=st.text_area("Explica con tus palabras qué ocurre al filtrar por plataforma")
-        sent=st.form_submit_button("Comprobar")
-        if sent:
-            if choice=="groupby()":st.success("Correcto: groupby permite agrupar filas.")
-            else:st.error("La respuesta correcta es groupby().")
-            if explanation.strip():st.info("Ahora intenta mostrarlo en el dashboard cambiando PC / navegador.")
+        "¿De dónde vienen los datos?":"requests.get consulta PokéAPI y transforma la respuesta JSON en un registro de pandas.",
+        "¿Qué es un DataFrame?":"Una tabla de pandas: cada fila es un Pokémon y cada columna es una característica.",
+        "¿Cómo funciona el filtro de tipo?":"El componente multiselect elige tipos y filter_data conserva filas que coinciden; indicadores y gráficos reciben la tabla filtrada.",
+        "¿Para qué sirve groupby?":"Agrupa Pokémon por tipo y permite calcular promedios o cantidades de cada grupo.",
+        "¿Por qué un histograma?":"Para ver cuántos Pokémon tienen valores de ataque dentro de intervalos.",
+        "¿Qué muestra la dispersión?":"Cada punto es un Pokémon; compara dos estadísticas y ayuda a visualizar asociación.",
+        "¿Por qué no se inventan datos?":"Los resultados provienen de PokéAPI; si la consulta falla se pide un CSV real exportado previamente."}
+    if st.checkbox("Revelar respuesta"):st.info(answers[q])
+    with st.form("practica"):
+        answer=st.radio("¿Qué función permite seleccionar varios tipos?",["st.metric","st.multiselect","st.title"],index=None)
+        personal=st.text_area("Explica en tus palabras qué ocurre al cambiar un filtro")
+        submitted=st.form_submit_button("Comprobar")
+    if submitted:
+        if answer=="st.multiselect":st.success("Correcto: multiselect permite elegir varias opciones.")
+        else:st.error("Correcta: st.multiselect.")
+        if personal.strip():st.info("Ahora demuéstralo en vivo cambiando el filtro de ataque mínimo.")
     st.feedback("thumbs")
 st.divider()
-st.caption("Proyecto académico · Martín Vásquez y Lizandro Delgado · Universidad San Sebastián · Fuente: FreeToGame.com")
+st.caption("PokéLab Analytics · Solemne 3 · Martín Vásquez y Lizandro Delgado · Fuente: PokéAPI")
