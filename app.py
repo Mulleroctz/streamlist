@@ -107,9 +107,17 @@ with tabs[0]:
             columns=st.columns(3)
             for c,(_,p) in zip(columns,selection.iloc[offset:offset+3].iterrows()):
                 image_url=str(p["Imagen"])
-                art=f'<img loading="lazy" src="{html.escape(image_url,quote=True)}" alt="{html.escape(str(p["Nombre"]))}">' if show_art and image_url.startswith("https://") else ""
                 with c:
-                    st.markdown(f'<div class="pokemon-card">{art}<div class="pokemon-body"><div class="pokemon-id">N.º {int(p["ID"]):03d}</div><div class="pokemon-name">{html.escape(str(p["Nombre"]))}</div><span class="pokemon-type">{html.escape(str(p["Tipos"]))}</span><div class="pokemon-stats">⚔️ Ataque {p["Ataque"]:.0f} &nbsp; 🛡️ Defensa {p["Defensa"]:.0f}<br>💨 Velocidad {p["Velocidad"]:.0f} &nbsp; ⭐ Total {p["Total"]:.0f}</div></div></div>',unsafe_allow_html=True)
+                    with st.container(border=True):
+                        if show_art:
+                            if image_url.startswith("https://"):
+                                st.image(image_url, use_container_width=True)
+                            else:
+                                st.caption("Ilustración no disponible")
+                        st.markdown(f"**N.º {int(p['ID']):03d} · {p['Nombre']}**")
+                        st.caption(f"Tipos: {p['Tipos']}")
+                        st.write(f"⚔️ Ataque: **{p['Ataque']:.0f}** · 🛡️ Defensa: **{p['Defensa']:.0f}**")
+                        st.write(f"💨 Velocidad: **{p['Velocidad']:.0f}** · ⭐ Total: **{p['Total']:.0f}**")
 
 with tabs[1]:
     st.subheader("Análisis descriptivo · preguntas que responden los gráficos")
@@ -151,7 +159,12 @@ with tabs[2]:
         st.success(f"Mayor {winner_stat.lower()}: {best['Nombre']} ({best[winner_stat]:.0f} puntos).")
         for column,(_,p) in zip(st.columns(len(chosen)),chosen.iterrows()):
             with column:
-                if show_art and str(p["Imagen"]).startswith("https://"):st.image(p["Imagen"],width=140)
+                image_url=str(p["Imagen"])
+                if show_art:
+                    if image_url.startswith("https://"):
+                        st.image(image_url, use_container_width=True)
+                    else:
+                        st.caption("Ilustración no disponible")
                 st.write(f"**{p['Nombre']}** · {p['Tipos']}")
         st.dataframe(chosen[["Nombre","Tipos",*STATS,"Total"]],hide_index=True,use_container_width=True)
 
@@ -177,9 +190,15 @@ with tabs[3]:
 
 with tabs[4]:
     st.subheader("Control de calidad, tabla y descarga")
-    options=["ID","Nombre","Generación","Año debut generación","Tipo principal","Tipo secundario",*STATS,"Total","Altura (m)","Peso (kg)","Habilidades"]
-    visible=st.multiselect("Columnas visibles",options,default=["ID","Nombre","Tipos"] if "Tipos" in options else ["ID","Nombre","Tipo principal","Ataque","Defensa","Velocidad","Total"])
-    if visible:st.dataframe(df[visible],hide_index=True,use_container_width=True)
+    options=["Imagen","ID","Nombre","Tipos","Generación","Año debut generación","Tipo principal","Tipo secundario",*STATS,"Total","Altura (m)","Peso (kg)","Habilidades"]
+    visible=st.multiselect("Columnas visibles",options,default=["Imagen","ID","Nombre","Tipos","Ataque","Defensa","Velocidad","Total"])
+    if visible:
+        st.dataframe(
+            df[visible],
+            hide_index=True,
+            use_container_width=True,
+            column_config={"Imagen": st.column_config.ImageColumn("Imagen oficial",width="medium",help="Ilustración oficial obtenida desde PokéAPI")}
+        )
     st.download_button("⬇️ Respaldo CSV real (todos los datos cargados)",raw.to_csv(index=False).encode("utf-8-sig"),file_name="pokemon_respaldo_real.csv",mime="text/csv")
     st.download_button("⬇️ Exportar selección filtrada",df.to_csv(index=False).encode("utf-8-sig"),file_name="pokemon_filtrado.csv",mime="text/csv")
     quality=pd.DataFrame({"Columna":raw.columns,"Tipo":[str(raw[c].dtype) for c in raw.columns],"Faltantes":[int(raw[c].isna().sum()) for c in raw.columns]})
