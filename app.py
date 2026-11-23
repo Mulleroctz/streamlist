@@ -188,6 +188,47 @@ with tabs[4]:
     with st.expander("¿Qué limpieza se hizo?"):
         st.write("Pandas convierte las estadísticas a números, comprueba valores ausentes, elimina IDs duplicados y calcula el total sumando las seis estadísticas base. Si una estadística está ausente, no se calcula un total engañoso.")
 
+    st.subheader("📚 Diccionario de variables: nombre, tipo y significado")
+    dictionary = {
+        "ID": ("Entero", "Identificador numérico del Pokémon en PokéAPI", "PokéAPI"),
+        "Nombre": ("Texto", "Nombre de la especie de Pokémon", "PokéAPI"),
+        "Generación": ("Categoría numérica", "Generación a la que pertenece según su ID en la Pokédex Nacional", "Derivado del ID"),
+        "Año debut generación": ("Año", "Año de lanzamiento inicial de los videojuegos de esa generación; no es fecha individual del Pokémon", "Tabla histórica de referencia"),
+        "Tipo principal": ("Categoría", "Primer tipo registrado para el Pokémon", "PokéAPI"),
+        "Tipo secundario": ("Categoría", "Segundo tipo, si existe", "PokéAPI"),
+        "Tipos": ("Texto", "Lista de tipos en un solo campo", "Derivado de PokéAPI"),
+        "Habilidades": ("Texto", "Habilidades registradas, separadas por coma", "PokéAPI"),
+        "PS": ("Número", "Puntos de salud base", "PokéAPI"),
+        "Ataque": ("Número", "Estadística de ataque físico base", "PokéAPI"),
+        "Defensa": ("Número", "Estadística de defensa física base", "PokéAPI"),
+        "Ataque especial": ("Número", "Estadística de ataque especial base", "PokéAPI"),
+        "Defensa especial": ("Número", "Estadística de defensa especial base", "PokéAPI"),
+        "Velocidad": ("Número", "Estadística de velocidad base", "PokéAPI"),
+        "Total": ("Número calculado", "Suma de las seis estadísticas base; requiere que estén todas presentes", "Calculado con pandas"),
+        "Altura (m)": ("Decimal", "Altura informada por PokéAPI, convertida de decímetros a metros", "PokéAPI + conversión"),
+        "Peso (kg)": ("Decimal", "Peso informado por PokéAPI, convertido de hectogramos a kilogramos", "PokéAPI + conversión"),
+        "Imagen": ("URL", "Dirección de la ilustración oficial, si está disponible", "PokéAPI"),
+    }
+    dictionary_df = pd.DataFrame([
+        {"Variable": name, "Tipo conceptual": info[0], "Qué significa": info[1], "Origen": info[2]}
+        for name, info in dictionary.items()
+    ])
+    st.dataframe(dictionary_df, hide_index=True, use_container_width=True)
+    selected_variable = st.selectbox("Explorar una variable y sus valores reales", list(dictionary))
+    st.info(f"**{selected_variable}** · {dictionary[selected_variable][1]} · Origen: {dictionary[selected_variable][2]}")
+    if selected_variable in raw.columns:
+        st.write("**Ejemplos obtenidos de los registros cargados:**")
+        examples = raw[selected_variable].dropna().astype(str).drop_duplicates().head(12)
+        st.write(", ".join(examples.tolist()) if len(examples) else "No hay valores disponibles")
+        st.metric("Valores distintos en la muestra", int(raw[selected_variable].nunique(dropna=True)))
+        st.metric("Valores faltantes en la muestra", int(raw[selected_variable].isna().sum()))
+    st.download_button(
+        "⬇️ Descargar diccionario de variables",
+        dictionary_df.to_csv(index=False).encode("utf-8-sig"),
+        file_name="diccionario_variables_pokemon.csv", mime="text/csv"
+    )
+    st.caption("Diferencia importante: las variables de la API son datos observados; Total, Generación y el año son valores derivados o enriquecidos.")
+
 with tabs[5]:
     st.subheader("Entrenamiento para la presentación y defensa")
     st.markdown("**Ruta fácil de recordar:** API → DataFrame → limpiar → filtrar → calcular → visualizar.")
