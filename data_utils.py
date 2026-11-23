@@ -6,6 +6,16 @@ import requests
 API = "https://pokeapi.co/api/v2/pokemon"
 NAMES = {"hp":"PS", "attack":"Ataque", "defense":"Defensa", "special-attack":"Ataque especial", "special-defense":"Defensa especial", "speed":"Velocidad"}
 STATS = list(NAMES.values())
+# Debut de videojuegos por generación, no fecha individual del Pokémon.
+GENERATIONS = [(151, 1, 1996), (251, 2, 1999), (386, 3, 2002),
+               (493, 4, 2006), (649, 5, 2010), (721, 6, 2013),
+               (809, 7, 2016), (905, 8, 2019), (1025, 9, 2022)]
+
+def generation_for_id(pokemon_id):
+    for last_id, generation, year in GENERATIONS:
+        if pokemon_id <= last_id:
+            return generation, year
+    return None, None
 
 def parse_pokemon(p):
     tipos = sorted(p["types"], key=lambda v:v["slot"])
@@ -16,6 +26,9 @@ def parse_pokemon(p):
          "Altura (m)":p["height"]/10, "Peso (kg)":p["weight"]/10,
          "Imagen":((p.get("sprites") or {}).get("other") or {}).get("official-artwork",{}).get("front_default") or ""}
     stat = {v["stat"]["name"]:v["base_stat"] for v in p["stats"]}
+    generation, year = generation_for_id(d["ID"])
+    d["Generación"] = generation
+    d["Año debut generación"] = year
     d.update({col:stat.get(raw) for raw,col in NAMES.items()})
     return d
 
@@ -27,6 +40,10 @@ def fetch_one(i):
 def clean(df):
     df=df.copy().drop_duplicates(subset="ID")
     for c in ["ID",*STATS,"Altura (m)","Peso (kg)"]:
+        df[c]=pd.to_numeric(df[c],errors="coerce")
+    for c,idx in [("Generación",0),("Año debut generación",1)]:
+        if c not in df.columns:df[c]=df["ID"].apply(lambda v: generation_for_id(int(v))[idx] if pd.notna(v) else None)
+    for c in []:
         df[c]=pd.to_numeric(df[c],errors="coerce")
     df=df.dropna(subset=["ID","Nombre","Tipo principal"])
     for c in ["Tipos","Tipo secundario","Imagen","Habilidades"]:
