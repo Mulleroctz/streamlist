@@ -15,21 +15,16 @@ TYPE_ES = {
     "steel":"Acero", "fairy":"Hada"
 }
 
-def localized_ability_names(abilities):
-    """Consulta los nombres oficiales españoles de las habilidades y guarda caché por ID."""
-    ids = sorted({int(a["ability"]["url"].rstrip("/").split("/")[-1])
-                  for item in abilities for a in item["abilities"]})
-    def one(identifier):
-        try:
-            response = requests.get(f"https://pokeapi.co/api/v2/ability/{identifier}/",timeout=12)
-            response.raise_for_status()
-            names = response.json().get("names",[])
-            spanish = next((n["name"] for n in names if n["language"]["name"]=="es"),None)
-            return identifier, spanish or "Sin traducción disponible"
-        except (requests.RequestException,ValueError,KeyError):
-            return identifier, "Traducción no disponible"
-    with ThreadPoolExecutor(max_workers=12) as pool:
-        return dict(pool.map(one,ids))
+def translated_ability(slug):
+    """Nombre oficial en español, consultado en PokéAPI. Sin inventar traducciones."""
+    try:
+        r=requests.get(f"https://pokeapi.co/api/v2/ability/{slug}/",timeout=12)
+        r.raise_for_status()
+        names=r.json().get("names",[])
+        return slug, next((row["name"] for row in names if row["language"]["name"]=="es"),
+                          "Traducción no disponible")
+    except (requests.RequestException,ValueError,KeyError):
+        return slug,"Traducción no disponible"
 
 # Debut de videojuegos por generación, no fecha individual del Pokémon.
 GENERATIONS = [(151, 1, 1996), (251, 2, 1999), (386, 3, 2002),
@@ -82,6 +77,13 @@ def load(n):
             try: rows.append(fut.result())
             except (requests.RequestException,ValueError,KeyError,TypeError) as e: failed.append(futures[fut])
     if not rows: raise RuntimeError("No se recibieron datos de PokéAPI.")
+    # Traducción de nombres de habilidades usando el campo names[language=es] de la API.
+    slugs=sorted({name.strip() for row in rows for name in row["Habilidades"].split(",") if name.strip()})
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        translations=dict(pool.map(translated_ability,slugs))
+    for row in rows:
+        row["Habilidades"]=", ".join(translations.get(name.strip(),"Traducción no disponible")
+                                     for name in row["Habilidades"].split(",") if name.strip())
     return clean(pd.DataFrame(rows)),sorted(failed)
 
 def filter_data(df,types,search,attack,speed,dual,weight):
